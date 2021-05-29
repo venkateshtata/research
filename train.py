@@ -5,8 +5,18 @@ from data_gen import drivingDataset
 import torchvision.transforms as transforms
 import torchvision
 from torch.utils.data import DataLoader
+import tqdm
 
 device = 'cpu'
+
+lr = 1e-4
+weight_decay = 1e-5
+batch_size = 32
+num_workers = 8
+test_size = 0.8
+shuffle = True
+
+epochs = 80
 
 torch.set_default_dtype(torch.float64)
 
@@ -40,11 +50,11 @@ class DriverNet(nn.Module):
 
   def forward(self, x):
       x = x.view(x.size(0), 3, 160, 320)
-      print("x.size(0) : ", x.size(0))
+      #print("x.size(0) : ", x.size(0))
       output = self.conv_layers(x)
-      print("output from conv layers : ", output.shape)
+      #print("output from conv layers : ", output.shape)
       output = output.view(output.size(0), -1)
-      print("output dims : ", output.shape)
+      #print("output dims : ", output.shape)
       output = self.linear_layers(output)
       return output
 
@@ -62,36 +72,37 @@ dataset = drivingDataset(transform = transformations)
 
 train_set, test_set = torch.utils.data.random_split(dataset, [14526, 3651])
 
-train_loader = DataLoader(dataset=train_set, batch_size=32, shuffle=True)
-test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=True)
+train_loader = DataLoader(dataset=train_set, batch_size=32, shuffle=shuffle)
+test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=shuffle)
 
 # model = torchvision.models.googlenet(pretrained=True)
 model.to(device)
 
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+optimizer = optim.Adam(model.parameters(), lr=lr)
 
-for epoch in range(10):
-    losses = []
+loss = 0
+for epoch in range(epochs):
+    print("Loss : ", loss)
+    print("current epoch : ", epoch)
+    for batch_idx, (data, targets) in enumerate(tqdm.tqdm(train_loader)):
 
-    for batch_idx, (data, targets) in enumerate(train_loader):
-
-        print("SIZE : ", data.shape)
-
-        data = data.to(device = device)
-        targets = targets.to(device = device)
-        print("1")
+        images = data.to(device = device)
+        angles = targets.to(device = device)
         
-        scores = model(data.double())
-
-        print("2")
-        loss = criterion(scores.float(), targets.float())
-
-        losses.append(loss.item())
-
         optimizer.zero_grad()
+
+        predicted_angles = model(data)
+
+        loss = criterion(predicted_angles, angles)
+
+        #optimizer.zero_grad()
         loss.backward()
 
         optimizer.step()
 
-    print("epoch")
+    if(epoch % 5 == 0):
+        torch.save(model.state_dict(), "trained_weights.pt")
+
+
+
