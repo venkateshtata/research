@@ -82,24 +82,37 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 loss = 0
-for epoch in range(epochs):
-    print("Loss : ", loss)
-    print("current epoch : ", epoch)
-    for batch_idx, (data, targets) in enumerate(tqdm.tqdm(train_loader)):
+for i in range(epochs):
+    
+    running_loss = 0.0
+
+    for batch_idx, (data, targets) in enumerate(train_loader):
 
         images = data.to(device = device)
         angles = targets.to(device = device)
+
+        angles = angles.view(-1,1)
         
         optimizer.zero_grad()
 
-        predicted_angles = model(data)
+        predicted_angles = model(images)
+
+        #print("angles shape : ", angles.shape)
+        #print("predicted angles shape : ", predicted_angles.shape)
+
+        #print("angle : ", angles[10])
+        #print("predicted angle : ", predicted_angles[10])
 
         loss = criterion(predicted_angles, angles)
 
-        #optimizer.zero_grad()
         loss.backward()
 
         optimizer.step()
+
+        running_loss += loss.item()
+        if(i%10==9):
+            print('[%d, %5d] loss: %.3f' % (epoch+1, i+1, running_loss/10))
+            running_loss = 0.0
 
     if(epoch % 5 == 0):
         torch.save(model.state_dict(), "trained_weights.pt")

@@ -37,3 +37,4 @@ class drivingDataset(Dataset):
             img = self.transform(img)
 
         return(img, label)
+
