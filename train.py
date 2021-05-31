@@ -126,7 +126,7 @@ for epoch in range(epochs):
 
         train_loss = train_loss + ((1 / (batch_idx + 1)) * (loss.data - train_loss))
 
-        writer.add_scalar('training loss', train_los, epoch * len(train_loader) + batch_idx)
+        #writer.add_scalar('training loss', train_loss, epoch * len(train_loader) + batch_idx)
         
         '''
         train_loss += loss.item()
@@ -158,12 +158,13 @@ for epoch in range(epochs):
         # update average validation loss
         valid_loss = valid_loss + ((1 / (batch_idx + 1)) * (loss.data - valid_loss))
 
-        writer.add_scalar('validation loss', valid_loss, epoch * len(test_loader) + batch_idx)
-    
-    print("len(train_loader.dataset) : ", len(train_loader.dataset))
-    print("len(train_loader) : ", len(train_loader.dataset))
+        #writer.add_scalar('validation loss', valid_loss, epoch * len(test_loader) + batch_idx)
+
     train_loss = train_loss/len(train_loader.dataset)
     valid_loss = valid_loss/len(train_loader.dataset)
+    
+    writer.add_scalar('training loss', train_loss)
+    writer.add_scalar('validation loss', valid_loss)
 
     print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch, train_loss, valid_loss))
 
