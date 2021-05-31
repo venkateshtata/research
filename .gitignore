@@ -1,2 +1,6 @@
 cam
 log
+tests
+trained_weights.pt
+trained_weights2.pth
+

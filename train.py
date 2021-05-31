@@ -6,17 +6,20 @@ import torchvision.transforms as transforms
 import torchvision
 from torch.utils.data import DataLoader
 import tqdm
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter('runs/driving')
 
 device = 'cpu'
 
-lr = 1e-4
+lr = 1e-5
 weight_decay = 1e-5
 batch_size = 32
 num_workers = 8
 test_size = 0.8
 shuffle = True
 
-epochs = 80
+epochs = 100
 
 torch.set_default_dtype(torch.float64)
 
@@ -39,7 +42,9 @@ class DriverNet(nn.Module):
             nn.Dropout(p=0.5)
         )
         self.linear_layers = nn.Sequential(
-            nn.Linear(in_features=64*13*33, out_features=100),
+            nn.Linear(in_features=64*13*33, out_features=1164),
+            nn.ELU(),
+            nn.Linear(in_features=1164, out_features=100),
             nn.ELU(),
             nn.Linear(in_features=100, out_features=50),
             nn.ELU(),
@@ -72,8 +77,15 @@ dataset = drivingDataset(transform = transformations)
 
 train_set, test_set = torch.utils.data.random_split(dataset, [14526, 3651])
 
+
 train_loader = DataLoader(dataset=train_set, batch_size=32, shuffle=shuffle)
 test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=shuffle)
+
+dataiter = iter(train_loader)
+images, lab = dataiter.next()
+
+writer.add_graph(model, images)
+writer.close()
 
 # model = torchvision.models.googlenet(pretrained=True)
 model.to(device)
@@ -81,11 +93,14 @@ model.to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
-loss = 0
-for i in range(epochs):
-    
-    running_loss = 0.0
 
+for epoch in range(epochs):
+    
+    train_loss = 0.0
+    valid_loss = 0.0
+    
+
+    # Model Training
     for batch_idx, (data, targets) in enumerate(train_loader):
 
         images = data.to(device = device)
@@ -109,13 +124,55 @@ for i in range(epochs):
 
         optimizer.step()
 
-        running_loss += loss.item()
-        if(i%10==9):
-            print('[%d, %5d] loss: %.3f' % (epoch+1, i+1, running_loss/10))
-            running_loss = 0.0
+        train_loss = train_loss + ((1 / (batch_idx + 1)) * (loss.data - train_loss))
 
-    if(epoch % 5 == 0):
-        torch.save(model.state_dict(), "trained_weights.pt")
+        writer.add_scalar('training loss', train_los, epoch * len(train_loader) + batch_idx)
+        
+        '''
+        train_loss += loss.item()
+        
+
+        if(batch_idx%30==29):
+
+            writer.add_scalar('training loss', running_loss / 30, epoch * len(train_loader) + batch_idx)
+
+            print('[%d, %5d] loss: %.3f' % (epoch+1, batch_idx+1, running_loss/30))
+            running_loss = 0.0
+        '''
+
+
+    # Model Validation
+    model.eval()
+    for batch_idx, (data, target) in enumerate(test_loader):
+        data = data.to(device = device)
+        target = target.to(device = device)
+            
+        target = target.view(-1,1)
+        
+        # forward pass: compute predicted outputs by passing inputs to the model
+        output = model(data)
+        
+        # calculate the batch loss
+        loss = criterion(output, target)
+        
+        # update average validation loss
+        valid_loss = valid_loss + ((1 / (batch_idx + 1)) * (loss.data - valid_loss))
+
+        writer.add_scalar('validation loss', valid_loss, epoch * len(test_loader) + batch_idx)
+    
+    print("len(train_loader.dataset) : ", len(train_loader.dataset))
+    print("len(train_loader) : ", len(train_loader.dataset))
+    train_loss = train_loss/len(train_loader.dataset)
+    valid_loss = valid_loss/len(train_loader.dataset)
+
+    print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch, train_loss, valid_loss))
+
+    #torch.save(model.state_dict(), "trained_weights.pt")
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss}, "trained_weights2.pth")
 
 
 
