@@ -139,7 +139,8 @@ for epoch in range(epochs):
             print('[%d, %5d] loss: %.3f' % (epoch+1, batch_idx+1, running_loss/30))
             running_loss = 0.0
         '''
-
+        if(batch_idx%30==29):
+            writer.add_scalar('training loss', train_loss/30, epoch * len(train_loader) + batch_idx)
 
     # Model Validation
     model.eval()
@@ -160,11 +161,19 @@ for epoch in range(epochs):
 
         #writer.add_scalar('validation loss', valid_loss, epoch * len(test_loader) + batch_idx)
 
+        if(batch_idx%30==29):
+            writer.add_scalar('validation loss', valid_loss/30, epoch * len(test_loader) + batch_idx)
+
     train_loss = train_loss/len(train_loader.dataset)
-    valid_loss = valid_loss/len(train_loader.dataset)
+    valid_loss = valid_loss/len(test_loader.dataset)
+
+    writer.add_scalar('Epoch Train Loss', train_loss/30, epoch)
+    writer.add_scalar('Epoch Valid Loss', valid_loss/30, epoch)
     
+    '''
     writer.add_scalar('training loss', train_loss)
     writer.add_scalar('validation loss', valid_loss)
+    '''
 
     print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch, train_loss, valid_loss))
 
